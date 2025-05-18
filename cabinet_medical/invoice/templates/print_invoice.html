@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Invoice #{{ invoice.id }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .invoice-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        .invoice-header h1 {
+            color: #2c3e50;
+            margin: 0;
+            font-size: 24px;
+        }
+        .invoice-details {
+            margin-bottom: 30px;
+        }
+        .invoice-details table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .invoice-details td {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .invoice-details td:first-child {
+            font-weight: bold;
+            width: 200px;
+        }
+        .invoice-items {
+            margin-bottom: 30px;
+        }
+        .invoice-items table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .invoice-items th {
+            background-color: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .invoice-items td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .invoice-total {
+            text-align: right;
+            margin-top: 20px;
+        }
+        .invoice-total table {
+            width: 300px;
+            margin-left: auto;
+        }
+        .invoice-total td {
+            padding: 8px;
+        }
+        .invoice-total td:last-child {
+            text-align: right;
+            font-weight: bold;
+        }
+        .invoice-footer {
+            margin-top: 50px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+        .status-paid {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .status-pending {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        .status-failed {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-header">
+        <h1>Medical Invoice</h1>
+        <p>Cabinet Medical</p>
+    </div>
+
+    <div class="invoice-details">
+        <table>
+            <tr>
+                <td>Invoice Number:</td>
+                <td>#{{ invoice.id }}</td>
+            </tr>
+            <tr>
+                <td>Date Issued:</td>
+                <td>{{ invoice.issued_date|date:"F j, Y" }}</td>
+            </tr>
+            <tr>
+                <td>Status:</td>
+                <td class="status-{{ invoice.payment_status|lower }}">{{ invoice.get_status_display }}</td>
+            </tr>
+            {% if invoice.payment_date %}
+            <tr>
+                <td>Payment Date:</td>
+                <td>{{ invoice.payment_date|date:"F j, Y" }}</td>
+            </tr>
+            {% endif %}
+            {% if invoice.payment_method %}
+            <tr>
+                <td>Payment Method:</td>
+                <td>{{ invoice.payment_method }}</td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+
+    <div class="invoice-details">
+        <table>
+            <tr>
+                <td>Patient:</td>
+                <td>{{ invoice.patient.utilisateur.username }}</td>
+            </tr>
+            <tr>
+                <td>Doctor:</td>
+                <td>Dr. {{ invoice.doctor.utilisateur.username }}</td>
+            </tr>
+            <tr>
+                <td>Appointment Date:</td>
+                <td>{{ invoice.appointment.date|date:"F j, Y" }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="invoice-items">
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Medical Consultation</td>
+                    <td>${{ invoice.amount|floatformat:2 }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="invoice-total">
+        <table>
+            <tr>
+                <td>Total Amount:</td>
+                <td>${{ invoice.amount|floatformat:2 }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="invoice-footer">
+        <p>Thank you for choosing our medical services!</p>
+        <p>This is a computer-generated invoice and does not require a signature.</p>
+    </div>
+</body>
+</html>

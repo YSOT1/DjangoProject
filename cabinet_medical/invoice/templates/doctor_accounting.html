@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Accounting Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.css">
+<style>
+    .revenue-card {
+        transition: transform 0.2s;
+    }
+    .revenue-card:hover {
+        transform: translateY(-5px);
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-4">Accounting Dashboard</h2>
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card revenue-card bg-primary text-white">
+                                <div class="card-body">
+                                    <h5 class="card-title">Total Revenue (30 Days)</h5>
+                                    <h2 class="mb-0">${{ total_revenue|floatformat:2 }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card revenue-card bg-success text-white">
+                                <div class="card-body">
+                                    <h5 class="card-title">Total Patients (30 Days)</h5>
+                                    <h2 class="mb-0">{{ total_patients }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card revenue-card bg-info text-white">
+                                <div class="card-body">
+                                    <h5 class="card-title">Average Revenue per Patient</h5>
+                                    <h2 class="mb-0">${{ total_revenue|div:total_patients|floatformat:2 }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">Revenue Trend (Last 30 Days)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">Recent Payments</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for invoice in recent_invoices %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ invoice.patient.utilisateur.username }}</h6>
+                                <small>{{ invoice.issued_date|date:"M d, Y" }}</small>
+                            </div>
+                            <p class="mb-1">${{ invoice.amount|floatformat:2 }}</p>
+                            <small class="text-{{ invoice.payment_status|lower }}">
+                                {{ invoice.get_status_display }}
+                            </small>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted text-center my-3">No recent payments</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">Payment History</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Patient</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Payment Method</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for invoice in recent_invoices %}
+                                <tr>
+                                    <td>{{ invoice.issued_date|date:"M d, Y" }}</td>
+                                    <td>{{ invoice.patient.utilisateur.username }}</td>
+                                    <td>${{ invoice.amount|floatformat:2 }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ invoice.payment_status|lower }}">
+                                            {{ invoice.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ invoice.payment_method|default:"-" }}</td>
+                                    <td>
+                                        <a href="{% url 'view_invoice' invoice.id %}" class="btn btn-sm btn-outline-primary">
+                                            View
+                                        </a>
+                                        <a href="{% url 'print_invoice' invoice.id %}" class="btn btn-sm btn-outline-secondary">
+                                            Print
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center">No payment history available</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const revenueData = {{ revenue_data|safe }};
+        
+        const ctx = document.getElementById('revenueChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: revenueData.dates,
+                datasets: [{
+                    label: 'Daily Revenue',
+                    data: revenueData.amounts,
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1,
+                    fill: true,
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %} 

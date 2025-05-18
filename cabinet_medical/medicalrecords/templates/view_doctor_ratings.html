@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% load rating_filters %}
+
+{% block title %}Dr. {{ doctor.utilisateur.username }}'s Ratings - Medical Cabinet{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Dr. {{ doctor.utilisateur.username }}'s Ratings</h2>
+                {% if medical_record %}
+                <a href="{% url 'view_medical_record' medical_record.id %}" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-left me-2"></i>Back to Medical Record
+                </a>
+                {% endif %}
+            </div>
+
+            {% if messages %}
+            <div class="messages mb-4">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if is_patient and not user_rating %}
+            <div class="mb-4">
+                <a href="{% url 'rate_doctor' doctor.id %}" class="btn btn-primary">
+                    <i class="bi bi-star me-2"></i>Rate This Doctor
+                </a>
+            </div>
+            {% endif %}
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h3 class="h4 mb-3">Overall Rating</h3>
+                            <div class="d-flex align-items-center">
+                                <div class="display-4 me-3">{{ average_rating|floatformat:1 }}</div>
+                                <div>
+                                    <div class="stars mb-2">
+                                        {% for i in "12345" %}
+                                            {% if forloop.counter <= average_rating|floatformat:0 %}
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                            {% elif forloop.counter|add:"-0.5" <= average_rating %}
+                                                <i class="bi bi-star-half text-warning"></i>
+                                            {% else %}
+                                                <i class="bi bi-star text-warning"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <div class="text-muted">{{ ratings.count }} ratings</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="rating-bars">
+                                {% for i in "54321" %}
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="me-2">{{ i }}★</div>
+                                        <div class="progress flex-grow-1" style="height: 8px;">
+                                            {% with count=ratings.count %}
+                                                {% if count > 0 %}
+                                                    {% with rating_count=ratings|filter_rating:forloop.counter|length %}
+                                                        <div class="progress-bar bg-warning" role="progressbar" 
+                                                             style="width: {{ rating_count|div:count|mul:100 }}%"
+                                                             aria-valuenow="{{ rating_count|div:count|mul:100 }}"
+                                                             aria-valuemin="0" aria-valuemax="100">
+                                                        </div>
+                                                    {% endwith %}
+                                                {% endif %}
+                                            {% endwith %}
+                                        </div>
+                                        <div class="ms-2 text-muted small">
+                                            {% with rating_count=ratings|filter_rating:forloop.counter|length %}
+                                                {{ rating_count }}
+                                            {% endwith %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ratings-list">
+                {% for rating in ratings %}
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <div class="stars mb-2">
+                                        {% for i in "12345" %}
+                                            {% if forloop.counter <= rating.rating %}
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                            {% else %}
+                                                <i class="bi bi-star text-warning"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    {% if rating.comment %}
+                                        <p class="mb-0">{{ rating.comment }}</p>
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted">
+                                    {{ rating.created_at|date:"F j, Y" }}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        No ratings yet. Be the first to rate this doctor!
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stars {
+        color: #ffc107;
+    }
+    
+    .progress {
+        background-color: #e9ecef;
+    }
+    
+    .progress-bar {
+        transition: width 0.6s ease;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-dismiss alerts after 5 seconds
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+            document.querySelectorAll('.alert').forEach(function(alert) {
+                var bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+    });
+</script>
+{% endblock %} 

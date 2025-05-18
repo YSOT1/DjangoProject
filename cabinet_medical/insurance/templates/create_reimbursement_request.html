@@ -1,0 +1,81 @@
+{% extends 'utilisateurs/patientDashboard.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Nouvelle Demande de Remboursement</h2>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card">
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h5>Détails de la Consultation</h5>
+                    <p><strong>Date:</strong> {{ consultation.date|date:"d/m/Y" }}</p>
+                    <p><strong>Médecin:</strong> Dr. {{ consultation.doctor.utilisateur.username }}</p>
+                    <p><strong>Montant:</strong> {{ consultation.fee }} MAD</p>
+                </div>
+                <div class="col-md-6">
+                    <h5>Type de Consultation</h5>
+                    <p>{{ consultation.consultation_type }}</p>
+                </div>
+            </div>
+
+            <form method="POST">
+                {% csrf_token %}
+                <div class="mb-4">
+                    <label for="insurance_policy" class="form-label">Sélectionner l'Assurance</label>
+                    <select class="form-select" id="insurance_policy" name="insurance_policy" required>
+                        <option value="">Choisir une assurance...</option>
+                        {% for policy in active_policies %}
+                            <option value="{{ policy.id }}">
+                                {{ policy.insurance.name }} ({{ policy.policy_number }}) - 
+                                Taux de remboursement: {{ policy.coverage_rate }}%
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Après avoir soumis votre demande, vous pourrez télécharger le dossier de remboursement 
+                    complet contenant tous les documents nécessaires.
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-2"></i>Créer la Demande
+                    </button>
+                    <a href="{% url 'reimbursement_status' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Retour aux Demandes
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-dismiss alerts after 5 seconds
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+            var alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
+            alerts.forEach(function(alert) {
+                var bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+    });
+</script>
+{% endblock %} 

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Dashboard - Medical Cabinet</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .stat-card {
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .stat-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .recent-payments {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+        }
+        .no-data-message {
+            text-align: center;
+            padding: 2rem;
+            background: #f8fafc;
+            border-radius: 15px;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'doctorDashboard' %}">Medical Cabinet</a>
+            <div class="navbar-nav ms-auto">
+                <span class="nav-item nav-link text-light">Welcome, Dr. {{ request.session.username }}</span>
+                <a class="nav-link" href="{% url 'doctorDashboard' %}">Back to Dashboard</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <h2 class="mb-4">Financial Dashboard</h2>
+
+        {% if not has_data %}
+        <div class="no-data-message">
+            <i class="bi bi-info-circle" style="font-size: 3rem; color: #6c757d;"></i>
+            <h4 class="mt-3">No Financial Data Available</h4>
+            <p class="text-muted">Your financial statistics will appear here once you have appointments and payments.</p>
+        </div>
+        {% else %}
+        <!-- Statistics Cards -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="stat-card bg-primary text-white p-4">
+                    <i class="bi bi-cash-coin stat-icon"></i>
+                    <h3>${{ monthly_earnings|floatformat:2 }}</h3>
+                    <p class="mb-0">Monthly Earnings</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card bg-success text-white p-4">
+                    <i class="bi bi-graph-up stat-icon"></i>
+                    <h3>${{ yearly_earnings|floatformat:2 }}</h3>
+                    <p class="mb-0">Yearly Earnings</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card bg-info text-white p-4">
+                    <i class="bi bi-people stat-icon"></i>
+                    <h3>{{ total_patients }}</h3>
+                    <p class="mb-0">Total Patients</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card bg-warning text-white p-4">
+                    <i class="bi bi-person-plus stat-icon"></i>
+                    <h3>{{ new_patients }}</h3>
+                    <p class="mb-0">New Patients</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Earnings Chart -->
+                <div class="chart-container">
+            <h4 class="mb-4">Earnings Trend</h4>
+                    <canvas id="earningsChart"></canvas>
+        </div>
+
+        <!-- Recent Payments -->
+        <div class="recent-payments">
+            <h4 class="mb-4">Recent Payments</h4>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Patient</th>
+                                <th>Amount</th>
+                                <th>Payment Method</th>
+                            <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payment in recent_payments %}
+                            <tr>
+                                <td>{{ payment.payment_date|date:"M d, Y" }}</td>
+                                <td>{{ payment.invoice.patient.utilisateur.username }}</td>
+                                <td>${{ payment.amount|floatformat:2 }}</td>
+                                <td>{{ payment.get_payment_method_display }}</td>
+                            <td>
+                                <span class="badge {% if payment.status == 'completed' %}bg-success{% elif payment.status == 'pending' %}bg-warning{% else %}bg-danger{% endif %}">
+                                    {{ payment.get_status_display }}
+                                </span>
+                            </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                            <td colspan="5" class="text-center">No recent payments</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    {% if has_data %}
+    <script>
+        // Fetch earnings data and create chart
+        fetch('/invoice/earnings-chart-data/')
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById('earningsChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Monthly Earnings',
+                            data: data.earnings,
+                            borderColor: '#2563EB',
+                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+    </script>
+    {% endif %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

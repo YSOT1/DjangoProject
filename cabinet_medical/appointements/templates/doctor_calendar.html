@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Schedule - Medical Cabinet</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <style>
+        .calendar-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .time-slot {
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            min-height: 60px;
+            position: relative;
+        }
+        
+        .time-slot:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .appointment {
+            background-color: #e3f2fd;
+            border-radius: 5px;
+            padding: 5px;
+            margin: 2px 0;
+            font-size: 0.9em;
+        }
+        
+        .appointment.completed {
+            background-color: #e8f5e9;
+        }
+        
+        .appointment.cancelled {
+            background-color: #ffebee;
+            text-decoration: line-through;
+        }
+        
+        .view-toggle {
+            margin-bottom: 20px;
+        }
+        
+        .day-header {
+            background-color: #f8f9fa;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .time-header {
+            background-color: #f8f9fa;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .navigation-buttons {
+            margin-bottom: 20px;
+        }
+
+        .navigation-buttons .btn {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'doctorDashboard' %}">
+                <i class="bi bi-hospital me-2"></i>Medical Cabinet
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="nav-item nav-link text-light">Welcome, Dr. {{ request.session.username }}</span>
+                <a class="nav-link" href="{% url 'signin' %}">
+                    <i class="bi bi-box-arrow-right me-1"></i>Sign Out
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="calendar-header">
+            <h2>My Schedule</h2>
+            <div class="view-toggle">
+                <div class="btn-group" role="group">
+                    <a href="?view=day&date={{ selected_date|date:'Y-m-d' }}" 
+                       class="btn btn-outline-primary {% if view_type == 'day' %}active{% endif %}">
+                        Day View
+                    </a>
+                    <a href="?view=week&date={{ selected_date|date:'Y-m-d' }}" 
+                       class="btn btn-outline-primary {% if view_type == 'week' %}active{% endif %}">
+                        Week View
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="navigation-buttons">
+            {% if view_type == 'day' %}
+                <a href="{{ prev_url }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-chevron-left"></i> Previous Day
+                </a>
+                <a href="{{ next_url }}" class="btn btn-outline-secondary">
+                    Next Day <i class="bi bi-chevron-right"></i>
+                </a>
+            {% else %}
+                <a href="{{ prev_url }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-chevron-left"></i> Previous Week
+                </a>
+                <a href="{{ next_url }}" class="btn btn-outline-secondary">
+                    Next Week <i class="bi bi-chevron-right"></i>
+                </a>
+            {% endif %}
+        </div>
+
+        <div class="calendar-container">
+            {% if view_type == 'day' %}
+                <h3 class="mb-4">{{ selected_date|date:"l, F j, Y" }}</h3>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th style="width: 100px;">Time</th>
+                                <th>Appointments</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for hour in time_slots %}
+                                <tr>
+                                    <td class="time-header">
+                                        {{ hour|stringformat:"02d" }}:00
+                                    </td>
+                                    <td class="time-slot">
+                                        {% for appointment in appointments %}
+                                            {% if appointment.date.hour == hour %}
+                                                <div class="appointment {% if appointment.status == 'completed' %}completed{% endif %}">
+                                                    <strong>{{ appointment.date|date:"H:i" }}</strong>
+                                                    <br>
+                                                    Patient: {{ appointment.patient.utilisateur.username }}
+                                                    <br>
+                                                    Status: {{ appointment.status|title }}
+                                                    {% if appointment.status == 'upcoming' %}
+                                                        <div class="mt-2">
+                                                            <a href="{% url 'complete_appointment' appointment.id %}" class="btn btn-sm btn-success">
+                                                                Complete
+                                                            </a>
+                                                            <a href="{% url 'cancel_appointment' appointment.id %}" class="btn btn-sm btn-danger">
+                                                                Cancel
+                                                            </a>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <h3 class="mb-4">Week of {{ start_of_week|date:"F j" }} - {{ end_of_week|date:"F j, Y" }}</h3>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th style="width: 100px;">Time</th>
+                                {% for day in week_appointments.keys %}
+                                    <th>{{ day|date:"D, M j" }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for hour in time_slots %}
+                                <tr>
+                                    <td class="time-header">
+                                        {{ hour|stringformat:"02d" }}:00
+                                    </td>
+                                    {% for day, appointments in week_appointments.items %}
+                                        <td class="time-slot">
+                                            {% for appointment in appointments %}
+                                                {% if appointment.date.hour == hour %}
+                                                    <div class="appointment {% if appointment.status == 'completed' %}completed{% endif %}">
+                                                        <strong>{{ appointment.date|date:"H:i" }}</strong>
+                                                        <br>
+                                                        Patient: {{ appointment.patient.utilisateur.username }}
+                                                        <br>
+                                                        Status: {{ appointment.status|title }}
+                                                        {% if appointment.status == 'upcoming' %}
+                                                            <div class="mt-2">
+                                                                <a href="{% url 'complete_appointment' appointment.id %}" class="btn btn-sm btn-success">
+                                                                    Complete
+                                                                </a>
+                                                                <a href="{% url 'cancel_appointment' appointment.id %}" class="btn btn-sm btn-danger">
+                                                                    Cancel
+                                                                </a>
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

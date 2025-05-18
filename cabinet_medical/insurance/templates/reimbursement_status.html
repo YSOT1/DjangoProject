@@ -1,0 +1,79 @@
+{% extends 'utilisateurs/patientDashboard.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Mes Demandes de Remboursement</h2>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card">
+        <div class="card-body">
+            {% if reimbursement_requests %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date de Consultation</th>
+                                <th>Médecin</th>
+                                <th>Assurance</th>
+                                <th>Montant Attendu</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for request in reimbursement_requests %}
+                                <tr>
+                                    <td>{{ request.consultation.date|date:"d/m/Y" }}</td>
+                                    <td>Dr. {{ request.consultation.doctor.utilisateur.username }}</td>
+                                    <td>{{ request.insurance_policy.insurance.name }}</td>
+                                    <td>{{ request.expected_amount }} MAD</td>
+                                    <td>
+                                        <span class="badge bg-{{ request.status|lower }}">
+                                            {{ request.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'download_reimbursement_dossier' request.consultation.id %}" 
+                                           class="btn btn-primary btn-sm">
+                                            <i class="bi bi-download me-1"></i>Télécharger Dossier
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>Vous n'avez pas encore de demandes de remboursement.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-dismiss alerts after 5 seconds
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+            var alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
+            alerts.forEach(function(alert) {
+                var bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+    });
+</script>
+{% endblock %} 

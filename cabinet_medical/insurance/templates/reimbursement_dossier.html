@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Dossier de Remboursement</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 2cm;
+            line-height: 1.6;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2cm;
+        }
+        .section {
+            margin-bottom: 1cm;
+        }
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 0.5cm;
+            border-bottom: 1px solid #000;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1cm;
+        }
+        .stamp {
+            position: absolute;
+            right: 2cm;
+            top: 2cm;
+            border: 2px solid #000;
+            padding: 1cm;
+            text-align: center;
+        }
+        .signature {
+            margin-top: 2cm;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Dossier de Remboursement</h1>
+        <p>Cabinet Médical</p>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Informations du Patient</div>
+        <div class="info-grid">
+            <div>
+                <p><strong>Nom:</strong> {{ patient.utilisateur.username }}</p>
+                <p><strong>Date de naissance:</strong> {{ patient.birth_date|date:"d/m/Y" }}</p>
+                <p><strong>Adresse:</strong> {{ patient.address }}</p>
+            </div>
+            <div>
+                <p><strong>Téléphone:</strong> {{ patient.phone }}</p>
+                <p><strong>Email:</strong> {{ patient.utilisateur.email }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Consultation</div>
+        <div class="info-grid">
+            <div>
+                <p><strong>Date:</strong> {{ consultation.date|date:"d/m/Y" }}</p>
+                <p><strong>Médecin:</strong> Dr. {{ doctor.utilisateur.username }}</p>
+            </div>
+            <div>
+                <p><strong>Montant:</strong> {{ consultation.fee }} MAD</p>
+                <p><strong>Type de consultation:</strong> {{ consultation.consultation_type }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Compte Rendu Médical</div>
+        <p>{{ consultation.notes }}</p>
+    </div>
+
+    {% if consultation.prescription %}
+    <div class="section">
+        <div class="section-title">Ordonnance</div>
+        <p>{{ consultation.prescription }}</p>
+    </div>
+    {% endif %}
+
+    <div class="stamp">
+        <p>Cachet du Médecin</p>
+    </div>
+
+    <div class="signature">
+        <p>Signature du Médecin</p>
+        <p>Dr. {{ doctor.utilisateur.username }}</p>
+    </div>
+</body>
+</html> 

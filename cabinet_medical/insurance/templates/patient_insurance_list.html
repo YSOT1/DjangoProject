@@ -1,0 +1,107 @@
+{% extends 'utilisateurs/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>My Insurance Policies</h2>
+        <a href="{% url 'add_insurance_policy' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-2"></i>Add New Policy
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Active Policies -->
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">Active Policies</h5>
+        </div>
+        <div class="card-body">
+            {% if active_policies %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Insurance Provider</th>
+                                <th>Policy Number</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Authorization Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for policy in active_policies %}
+                                <tr>
+                                    <td>{{ policy.insurance.name }}</td>
+                                    <td>{{ policy.policy_number }}</td>
+                                    <td>{{ policy.start_date|date:"M d, Y" }}</td>
+                                    <td>{{ policy.end_date|date:"M d, Y"|default:"N/A" }}</td>
+                                    <td>
+                                        {% if policy.requires_authorization %}
+                                            <span class="badge bg-warning">Yes</span>
+                                        {% else %}
+                                            <span class="badge bg-success">No</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted mb-0">No active insurance policies found.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Expired Policies -->
+    <div class="card">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">Expired Policies</h5>
+        </div>
+        <div class="card-body">
+            {% if expired_policies %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Insurance Provider</th>
+                                <th>Policy Number</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Authorization Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for policy in expired_policies %}
+                                <tr>
+                                    <td>{{ policy.insurance.name }}</td>
+                                    <td>{{ policy.policy_number }}</td>
+                                    <td>{{ policy.start_date|date:"M d, Y" }}</td>
+                                    <td>{{ policy.end_date|date:"M d, Y"|default:"N/A" }}</td>
+                                    <td>
+                                        {% if policy.requires_authorization %}
+                                            <span class="badge bg-warning">Yes</span>
+                                        {% else %}
+                                            <span class="badge bg-success">No</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted mb-0">No expired insurance policies found.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

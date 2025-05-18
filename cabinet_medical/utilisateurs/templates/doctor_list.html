@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find a Doctor - Medical Cabinet</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #2563EB;
+            --secondary-blue: #3B82F6;
+            --teal: #0D9488;
+            --gray-100: #F3F4F6;
+            --gray-200: #E5E7EB;
+            --gray-700: #374151;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--gray-100);
+        }
+
+        .navbar {
+            background-color: var(--primary-blue) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        }
+
+        .btn-primary {
+            background-color: var(--primary-blue);
+            border-color: var(--primary-blue);
+            padding: 0.5rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--secondary-blue);
+            border-color: var(--secondary-blue);
+            transform: translateY(-1px);
+        }
+
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 1px solid var(--gray-200);
+            padding: 0.75rem 1rem;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--secondary-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .text-warning {
+            color: #F59E0B !important;
+        }
+
+        .doctor-card {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .doctor-card .card-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .doctor-card .btn {
+            margin-top: auto;
+        }
+
+        .specialty-badge {
+            background-color: var(--teal);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            .card {
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'patientDashboard' %}">
+                <i class="bi bi-hospital me-2"></i>Medical Cabinet
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="nav-item nav-link text-light">Welcome, {{ request.session.username }}</span>
+                <a class="nav-link" href="{% url 'patientDashboard' %}">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h2 class="mb-4">Find a Doctor</h2>
+
+        <!-- Search and Filter Section -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="search" class="form-label">Search by Name</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white">
+                                <i class="bi bi-search text-muted"></i>
+                            </span>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   value="{{ request.GET.search }}" placeholder="Enter doctor's name">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="speciality" class="form-label">Speciality</label>
+                        <select class="form-select" id="speciality" name="speciality">
+                            <option value="">All Specialities</option>
+                            {% for spec in specialities %}
+                                <option value="{{ spec }}" {% if request.GET.speciality == spec %}selected{% endif %}>
+                                    {{ spec }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="rating" class="form-label">Minimum Rating</label>
+                        <select class="form-select" id="rating" name="rating">
+                            <option value="">Any Rating</option>
+                            <option value="4" {% if request.GET.rating == '4' %}selected{% endif %}>4+ Stars</option>
+                            <option value="3" {% if request.GET.rating == '3' %}selected{% endif %}>3+ Stars</option>
+                            <option value="2" {% if request.GET.rating == '2' %}selected{% endif %}>2+ Stars</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-search me-2"></i>Search
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Doctors List -->
+        <div class="row">
+            {% if doctors %}
+                {% for doctor in doctors %}
+                    <div class="col-md-6 mb-4">
+                        <div class="card doctor-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <h5 class="card-title mb-1">Dr. {{ doctor.utilisateur.username }}</h5>
+                                        <span class="specialty-badge">{{ doctor.specialite }}</span>
+                                    </div>
+                                    <div class="text-warning">
+                                        {% with ''|center:doctor.rating as range %}
+                                            {% for _ in range %}
+                                                <i class="bi bi-star-fill"></i>
+                                            {% endfor %}
+                                        {% endwith %}
+                                        {% with ''|center:5|slice:doctor.rating as range %}
+                                            {% for _ in range %}
+                                                <i class="bi bi-star"></i>
+                                            {% endfor %}
+                                        {% endwith %}
+                                        <span class="text-muted">({{ doctor.rating }})</span>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <p class="card-text mb-2">
+                                        <i class="bi bi-briefcase me-2 text-primary"></i>
+                                        <strong>Experience:</strong> {{ doctor.experience_years }} years
+                                    </p>
+                                    <p class="card-text mb-2">
+                                        <i class="bi bi-mortarboard me-2 text-primary"></i>
+                                        <strong>Education:</strong> {{ doctor.education }}
+                                    </p>
+                                    {% if doctor.bio %}
+                                        <p class="card-text">
+                                            <i class="bi bi-info-circle me-2 text-primary"></i>
+                                            <strong>About:</strong> {{ doctor.bio|truncatewords:30 }}
+                                        </p>
+                                    {% endif %}
+                                </div>
+                                <a href="{% url 'book_appointment' %}?doctor_id={{ doctor.id }}" 
+                                   class="btn btn-primary">
+                                    <i class="bi bi-calendar-plus me-2"></i>Book Appointment
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12">
+                    <div class="alert alert-info d-flex align-items-center">
+                        <i class="bi bi-info-circle me-2"></i>
+                        No doctors found matching your criteria.
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

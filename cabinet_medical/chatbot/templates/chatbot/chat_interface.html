@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+
+{% block title %}Medical Assistant - Medical Cabinet{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-robot me-2"></i>Medical Assistant
+                    </h5>
+                    <button id="clearChat" class="btn btn-sm btn-light">
+                        <i class="bi bi-trash"></i> Clear Chat
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="chatMessages" class="chat-messages mb-4">
+                        {% for message in chat_messages %}
+                            <div class="message {% if message.is_from_patient %}message-patient{% else %}message-ai{% endif %} mb-3">
+                                <div class="message-content">
+                                    {{ message.message|linebreaks }}
+                                </div>
+                                <small class="text-muted">
+                                    {{ message.created_at|date:"g:i A" }}
+                                </small>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <form id="chatForm" class="chat-form">
+                        {% csrf_token %}
+                        <div class="input-group">
+                            <input type="text" id="messageInput" class="form-control" 
+                                   placeholder="Type your message here..." required>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-send"></i> Send
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-messages {
+        height: 500px;
+        overflow-y: auto;
+        padding: 1rem;
+    }
+
+    .message {
+        max-width: 80%;
+        padding: 0.75rem;
+        border-radius: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .message-patient {
+        background-color: #e3f2fd;
+        margin-left: auto;
+        border-bottom-right-radius: 0.25rem;
+    }
+
+    .message-ai {
+        background-color: #f5f5f5;
+        margin-right: auto;
+        border-bottom-left-radius: 0.25rem;
+    }
+
+    .message-content {
+        white-space: pre-line;
+    }
+
+    .chat-form {
+        position: sticky;
+        bottom: 0;
+        background-color: white;
+        padding-top: 1rem;
+        border-top: 1px solid #dee2e6;
+    }
+
+    #messageInput {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+
+    .btn-primary {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chatForm = document.getElementById('chatForm');
+    const messageInput = document.getElementById('messageInput');
+    const chatMessages = document.getElementById('chatMessages');
+    const clearChatButton = document.getElementById('clearChat');
+
+    // Scroll to bottom of chat
+    function scrollToBottom() {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Add a message to the chat
+    function addMessage(message, isPatient) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isPatient ? 'message-patient' : 'message-ai'} mb-3`;
+        
+        const content = document.createElement('div');
+        content.className = 'message-content';
+        content.innerHTML = message.replace(/\n/g, '<br>');
+        
+        const time = document.createElement('small');
+        time.className = 'text-muted';
+        time.textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        
+        messageDiv.appendChild(content);
+        messageDiv.appendChild(time);
+        chatMessages.appendChild(messageDiv);
+        scrollToBottom();
+    }
+
+    // Handle form submission
+    chatForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const message = messageInput.value.trim();
+        if (!message) return;
+        
+        // Add patient message
+        addMessage(message, true);
+        messageInput.value = '';
+        
+        try {
+            const response = await fetch('{% url "send_message" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: `message=${encodeURIComponent(message)}`
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                // Add AI response
+                addMessage(data.response, false);
+                
+                // If it's an emergency, show an alert
+                if (data.is_emergency) {
+                    alert('⚠️ This appears to be a medical emergency. Please seek immediate medical attention.');
+                }
+            } else {
+                throw new Error(data.error || 'Error sending message');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            addMessage('Sorry, there was an error processing your message. Please try again.', false);
+        }
+    });
+
+    // Handle clear chat
+    clearChatButton.addEventListener('click', async function() {
+        if (!confirm('Are you sure you want to clear the chat history?')) return;
+        
+        try {
+            const response = await fetch('{% url "clear_chat" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            });
+            
+            if (response.ok) {
+                chatMessages.innerHTML = '';
+            } else {
+                throw new Error('Error clearing chat');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error clearing chat history. Please try again.');
+        }
+    });
+
+    // Initial scroll to bottom
+    scrollToBottom();
+});
+</script>
+{% endblock %} 
