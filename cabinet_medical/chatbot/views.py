@@ -2,36 +2,55 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.contrib import messages
-from .models import ChatMessage
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from .models import ChatMessage, ChatSession
 from .services import ChatbotService
-from utilisateurs.models import Patient
+from utilisateurs.models import Patient, Doctor
+from utilisateurs.views import custom_login_required
+import google.generativeai as genai
+import json
 import logging
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
-@login_required
-def chat_interface(request):
-    """View for the chat interface."""
-    try:
-        if request.session['role'] != 'patient':
-            messages.error(request, 'Access denied')
-            return redirect('signin')
-        
-        patient = Patient.objects.get(utilisateur_id=request.session['user_id'])
-        chat_messages = ChatMessage.objects.filter(patient=patient).order_by('created_at')
-        
-        context = {
-            'chat_messages': chat_messages,
-            'patient': patient
-        }
-        return render(request, 'chat_interface.html', context)
-        
-    except Exception as e:
-        logger.error(f"Error in chat_interface: {str(e)}")
-        messages.error(request, 'Error loading chat interface')
-        return redirect('patientDashboard')
+# Initialize the Google Generative AI client
+# Note: In production, use environment variables for the API key
+genai.configure(api_key="AIzaSyAJRYbA5nZ3fYsvdQ4WuYDeRCWC_eldHKE")
 
-@login_required
+# List available models
+try:
+    for m in genai.list_models():
+        if 'generateContent' in m.supported_generation_methods:
+            logger.info(f"Available model: {m.name}")
+except Exception as e:
+    logger.error(f"Error listing models: {str(e)}")
+
+# Medical context prompts
+MEDICAL_CONTEXT = """
+You are a medical assistant AI in a medical cabinet. Your role is to:
+1. Provide general medical information and guidance
+2. Help patients understand their conditions and treatments
+3. Assist with appointment scheduling and medical record inquiries
+4. Offer basic health advice and wellness tips
+5. Direct patients to appropriate medical professionals when needed
+
+Important guidelines:
+- Always maintain patient confidentiality
+- Never provide specific medical diagnoses
+- Encourage patients to consult their doctors for serious concerns
+- Be clear about the limitations of AI medical advice
+- Use simple, understandable language
+- Be empathetic and professional
+"""
+
+@custom_login_required
+def chat_interface(request):
+    """Render the chat interface."""
+    return render(request, 'chatbot/chat.html')
+
+@custom_login_required
 def send_message(request):
     """View for handling message sending and receiving AI responses."""
     try:
@@ -79,7 +98,7 @@ def send_message(request):
         logger.error(f"Error in send_message: {str(e)}")
         return JsonResponse({'error': 'Internal server error'}, status=500)
 
-@login_required
+@custom_login_required
 def clear_chat(request):
     """View for clearing chat history."""
     try:
@@ -97,3 +116,59 @@ def clear_chat(request):
     except Exception as e:
         logger.error(f"Error in clear_chat: {str(e)}")
         return JsonResponse({'error': 'Internal server error'}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+@custom_login_required
+def process_message(request):
+    """Process incoming chat messages and generate AI responses."""
+    try:
+        data = json.loads(request.body)
+        user_message = data.get('message')
+        
+        if not user_message:
+            return JsonResponse({'error': 'No message provided'}, status=400)
+        
+        logger.info(f'AI received message: {user_message}')
+        
+        # Prepare the prompt with medical context
+        prompt = f"""As a medical assistant in a medical cabinet, provide a helpful and professional response to: {user_message}
+        
+        Guidelines:
+        - Maintain patient confidentiality
+        - Don't provide specific medical diagnoses
+        - Encourage consulting doctors for serious concerns
+        - Use simple, understandable language
+        - Be empathetic and professional"""
+        
+        # Generate response using Gemini
+        model = genai.GenerativeModel('gemini-2.0-flash')
+        response = model.generate_content(prompt)
+        
+        bot_response = response.text
+        logger.info(f'AI bot response: {bot_response}')
+        
+        return JsonResponse({'response': bot_response})
+        
+    except Exception as e:
+        logger.error(f'Error: {str(e)}')
+        return JsonResponse({'error': 'An error occurred'}, status=500)
+
+@custom_login_required
+def get_chat_history(request):
+    """Retrieve chat history for the current user."""
+    try:
+        user = request.user
+        chat_messages = ChatMessage.objects.filter(user=user).order_by('created_at')
+        
+        chat_history = [{
+            'message': msg.message,
+            'response': msg.response,
+            'timestamp': msg.created_at.isoformat()
+        } for msg in chat_messages]
+        
+        return JsonResponse({'chat_history': chat_history})
+        
+    except Exception as e:
+        logger.error(f"Error retrieving chat history: {str(e)}")
+        return JsonResponse({'error': 'Error retrieving chat history'}, status=500)

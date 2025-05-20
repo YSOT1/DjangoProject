@@ -5,6 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Patient Records - Medical Cabinet</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .patient-card {
+            transition: transform 0.2s;
+            margin-bottom: 1rem;
+        }
+        .patient-card:hover {
+            transform: translateY(-2px);
+        }
+        .no-record {
+            background-color: #FEF2F2;
+        }
+        .has-record {
+            background-color: #F0FDF4;
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
@@ -17,7 +32,7 @@
         </div>
     </nav>
 
-<div class="container mt-4">
+    <div class="container mt-4">
         <h2>My Patients' Medical Records</h2>
         
         {% if messages %}
@@ -31,31 +46,43 @@
         {% if patients_data %}
             <div class="row">
                 {% for data in patients_data %}
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-body">
+                    <div class="col-md-6 mb-4">
+                        <div class="card patient-card {% if data.medical_record %}has-record{% else %}no-record{% endif %}">
+                            <div class="card-body">
                                 <h5 class="card-title">{{ data.patient.utilisateur.username }}</h5>
                                 <p class="card-text">
-                                    <strong>Next Appointment:</strong> 
-                                    {{ data.next_appointment|date:"F j, Y" }}
+                                    <strong>Phone:</strong> {{ data.patient.phone }}
                                 </p>
-                                <p class="card-text">
-                                    <strong>Blood Type:</strong>
-                                    {{ data.medical_record.get_blood_type_display|default:"Not specified" }}
-                        </p>
-                                <a href="{% url 'view_medical_record' data.medical_record.id %}" 
-                                   class="btn btn-primary">View Medical Record</a>
+                                {% if data.next_appointment %}
+                                    <p class="card-text">
+                                        <strong>Next Appointment:</strong> 
+                                        {{ data.next_appointment|date:"F j, Y" }}
+                                    </p>
+                                {% endif %}
+                                {% if data.medical_record %}
+                                    <p class="card-text">
+                                        <strong>Blood Type:</strong>
+                                        {{ data.medical_record.get_blood_type_display|default:"Not specified" }}
+                                    </p>
+                                    <a href="{% url 'view_medical_record' data.medical_record.id %}" 
+                                       class="btn btn-primary">View Medical Record</a>
+                                {% else %}
+                                    <p class="card-text text-danger">
+                                        <i class="bi bi-exclamation-triangle"></i>
+                                        No medical record available
+                                    </p>
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
-                </div>
+                {% endfor %}
             </div>
-            {% endfor %}
-        </div>
-    {% else %}
+        {% else %}
             <div class="alert alert-info">
                 You don't have any confirmed appointments with patients yet.
-        </div>
-    {% endif %}
-</div>
+            </div>
+        {% endif %}
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

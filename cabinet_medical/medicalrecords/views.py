@@ -13,6 +13,7 @@ from xhtml2pdf import pisa
 from django.db import models
 from django.db.models import Avg
 from .forms import DoctorRatingForm
+from utilisateurs.views import custom_login_required
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -62,7 +63,7 @@ def create_medical_record(request):
         messages.error(request, f'Error creating medical record: {str(e)}')
         return redirect('patientDashboard')
 
-@login_required
+@custom_login_required
 def view_medical_record(request, record_id):
     try:
         medical_record = get_object_or_404(MedicalRecord, id=record_id)
@@ -208,14 +209,14 @@ def patient_medical_records(request):
     
     return redirect('view_medical_record', record_id=medical_record.id)
 
-@login_required
+@custom_login_required
 def doctor_patient_records(request):
     try:
         # Get user from session
-        if 'user_id' not in request.session or request.session['role'] != 'doctor':
+        if request.session['role'] != 'doctor':
             logger.error(f"Access denied: User not logged in or not a doctor")
             messages.error(request, 'Please sign in as a doctor')
-            return redirect('doctorDashboard')
+            return redirect('signin')
         
         # Get the doctor instance
         user = Utilisateurs.objects.get(id=request.session['user_id'])
@@ -225,7 +226,8 @@ def doctor_patient_records(request):
         
         # Get all appointments for this doctor
         appointments = Appointement.objects.filter(
-            doctor=doctor
+            doctor=doctor,
+            status__in=['upcoming', 'completed']  # Only show active and completed appointments
         ).select_related(
             'patient',
             'patient__utilisateur'
@@ -245,22 +247,31 @@ def doctor_patient_records(request):
                 # Get the patient's medical record
                 medical_record = MedicalRecord.objects.filter(patient=patient).first()
                 logger.info(f"Patient {patient.utilisateur.username} - Has medical record: {medical_record is not None}")
-                if medical_record:
-                    patients_data.append({
-                        'patient': patient,
-                        'medical_record': medical_record,
-                        'next_appointment': appointment.date
-                    })
+                
+                # Get the next upcoming appointment for this patient
+                next_appointment = Appointement.objects.filter(
+                    doctor=doctor,
+                    patient=patient,
+                    status='upcoming',
+                    date__gte=timezone.now()
+                ).order_by('date').first()
+                
+                patients_data.append({
+                    'patient': patient,
+                    'medical_record': medical_record,
+                    'next_appointment': next_appointment.date if next_appointment else None
+                })
         
-        logger.info(f"Doctor {doctor.utilisateur.username} accessed patient records. Found {len(patients_data)} patients with records.")
+        logger.info(f"Processed {len(patients_data)} unique patients")
         
-        return render(request, 'doctor_patient_records.html', {
+        context = {
             'patients_data': patients_data
-        })
-    
+        }
+        return render(request, 'doctor_patient_records.html', context)
+        
     except Exception as e:
         logger.error(f"Error in doctor_patient_records: {str(e)}")
-        messages.error(request, f'Error accessing patient records: {str(e)}')
+        messages.error(request, f'Error loading patient records: {str(e)}')
         return redirect('doctorDashboard')
 
 def export_medical_record_pdf(request, record_id):

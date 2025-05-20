@@ -24,5 +24,5 @@ urlpatterns = [
     path('medicalrecords/', include("medicalrecords.urls")),
     path('invoice/', include("invoice.urls")),
     path('insurance/', include('insurance.urls')),
-    path('chat/', include('chatbot.urls')),
+    path('chatbot/', include('chatbot.urls')),
 ]

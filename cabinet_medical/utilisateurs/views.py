@@ -6,7 +6,7 @@ from django.contrib.auth.hashers import make_password, check_password
 from datetime import datetime
 from medicalrecords.models import MedicalRecord
 import logging
-from django.contrib.auth.decorators import login_required
+from functools import wraps
 from django.utils import timezone
 from appointements.models import Appointement
 from django.db.models import Sum
@@ -15,7 +15,15 @@ from invoice.models import Invoice
 # Set up logging
 logger = logging.getLogger(__name__)
 
-# Create your views here.
+def custom_login_required(view_func):
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        if 'user_id' not in request.session:
+            messages.error(request, 'Please sign in to access this page')
+            return redirect('signin')
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view
+
 def signin(request):
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -24,10 +32,19 @@ def signin(request):
         try:
             user = Utilisateurs.objects.get(username=username)
             if check_password(password, user.password):
+                # Create new session
+                request.session.create()
+                
                 # Store user info in session
                 request.session['user_id'] = user.id
                 request.session['username'] = user.username
                 request.session['role'] = user.role.lower()  # Store role in lowercase
+                
+                # Set session expiry
+                request.session.set_expiry(86400)  # 24 hours
+                
+                # Save session immediately
+                request.session.save()
 
                 # Redirect based on role
                 if user.role.lower() == 'doctor':
@@ -93,9 +110,10 @@ def signup(request):
 
     return render(request, 'signup.html')
 
+@custom_login_required
 def patientDashboard(request):
     try:
-        if 'user_id' not in request.session or request.session['role'] != 'patient':
+        if request.session['role'] != 'patient':
             logger.error(f"Access denied: User not logged in or not a patient")
             messages.error(request, 'Please sign in as a patient')
             return redirect('signin')
@@ -142,6 +160,12 @@ def patientDashboard(request):
         # Get medical record
         medical_record = MedicalRecord.objects.filter(patient=patient).first()
         
+        # Get recent invoices
+        recent_invoices = Invoice.objects.filter(
+            patient=patient,
+            is_paid=True
+        ).select_related('doctor', 'doctor__utilisateur').order_by('-issued_date')[:5]
+        
         context = {
             'today': today,
             'upcoming_appointments': upcoming_appointments,
@@ -149,7 +173,8 @@ def patientDashboard(request):
             'total_spent': total_spent,
             'last_visit': last_visit.date.strftime('%b %d, %Y') if last_visit else None,
             'recent_appointments': recent_appointments,
-            'medical_record': medical_record
+            'medical_record': medical_record,
+            'recent_invoices': recent_invoices
         }
         
         return render(request, 'patientDashboard.html', context)

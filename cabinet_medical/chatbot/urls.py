@@ -3,6 +3,6 @@ from . import views
 
 urlpatterns = [
     path('', views.chat_interface, name='chat_interface'),
-    path('send/', views.send_message, name='send_message'),
-    path('clear/', views.clear_chat, name='clear_chat'),
+    path('process_message/', views.process_message, name='process_message'),
+    path('chat_history/', views.get_chat_history, name='get_chat_history'),
 ] 

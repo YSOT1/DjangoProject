@@ -90,7 +90,11 @@ def process_payment(request, invoice_id):
                     # Continue anyway since payment was successful
                 
                 messages.success(request, 'Payment completed successfully! Your appointment is now confirmed.')
-                return redirect('patient_appointments')
+                return render(request, 'payment.html', {
+                    'invoice': invoice,
+                    'payment_methods': Payment.PaymentMethod.choices,
+                    'show_print_button': True
+                })
                 
             except Exception as e:
                 logger.error(f"Error during payment processing: {str(e)}\n{traceback.format_exc()}")
@@ -279,3 +283,44 @@ def get_earnings_chart_data(request):
     except Exception as e:
         logger.error(f"Error getting earnings chart data: {str(e)}", exc_info=True)
         return JsonResponse({'error': 'Server error'}, status=500)
+
+def print_invoice(request, invoice_id):
+    """View for printing an invoice."""
+    try:
+        logger.info(f"Attempting to print invoice {invoice_id}")
+        
+        # Get invoice
+        invoice = get_object_or_404(Invoice, id=invoice_id)
+        
+        # Check if user has permission to view this invoice
+        if 'user_id' not in request.session:
+            logger.warning("No user_id in session")
+            messages.error(request, 'Please sign in to view invoices.')
+            return redirect('signin')
+            
+        user = request.session['user_id']
+        
+        # Allow both patient and doctor to view their own invoices
+        if invoice.patient.utilisateur.id != user and invoice.doctor.utilisateur.id != user:
+            logger.warning(f"Permission denied: User {user} trying to view invoice {invoice_id}")
+            messages.error(request, 'You do not have permission to view this invoice.')
+            return redirect('patientDashboard')
+        
+        # Get payment information
+        payment = invoice.latest_payment
+        if payment:
+            invoice.payment_date = payment.payment_date
+            invoice.payment_method = payment.get_payment_method_display()
+            invoice.payment_status = payment.status
+        
+        context = {
+            'invoice': invoice
+        }
+        
+        logger.info(f"Rendering invoice {invoice_id} for printing")
+        return render(request, 'print_invoice.html', context)
+        
+    except Exception as e:
+        logger.error(f"Error printing invoice: {str(e)}\n{traceback.format_exc()}")
+        messages.error(request, 'Error generating invoice.')
+        return redirect('patientDashboard')

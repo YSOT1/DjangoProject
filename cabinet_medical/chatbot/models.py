@@ -1,16 +1,28 @@
 from django.db import models
-from utilisateurs.models import Patient
-from django.utils import timezone
+from utilisateurs.models import Patient, Doctor, Utilisateurs
 
 class ChatMessage(models.Model):
-    """Model for storing chat messages between patients and the AI chatbot."""
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='chat_messages')
+    """Model for storing chat messages."""
+    user = models.ForeignKey(Utilisateurs, on_delete=models.CASCADE)
     message = models.TextField()
-    is_from_patient = models.BooleanField(default=True)
+    response = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-
+    
     class Meta:
-        ordering = ['created_at']
-
+        ordering = ['-created_at']
+        
     def __str__(self):
-        return f"{'Patient' if self.is_from_patient else 'AI'} message at {self.created_at}"
+        return f"Chat message from {self.user.username} at {self.created_at}"
+
+class ChatSession(models.Model):
+    """Model for storing chat sessions."""
+    user = models.ForeignKey(Utilisateurs, on_delete=models.CASCADE)
+    started_at = models.DateTimeField(auto_now_add=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    messages = models.ManyToManyField(ChatMessage, related_name='sessions')
+    
+    class Meta:
+        ordering = ['-started_at']
+        
+    def __str__(self):
+        return f"Chat session for {self.user.username} started at {self.started_at}"
