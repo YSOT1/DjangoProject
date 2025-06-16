@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # Initialize the Google Generative AI client
 # Note: In production, use environment variables for the API key
-genai.configure(api_key="AIzaSyAJRYbA5nZ3fYsvdQ4WuYDeRCWC_eldHKE")
+genai.configure(api_key="your-api-key")
 
 # List available models
 try:
